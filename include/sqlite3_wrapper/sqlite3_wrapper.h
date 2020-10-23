@@ -176,7 +176,7 @@ namespace sqlite3_wrapper
     class db
     {
     public:
-        db(std::string_view filename, int flags)
+        db(std::string_view filename, int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
         {
             auto res = sqlite3_open_v2(filename.data(), &_db, flags, nullptr);
             if (res != SQLITE_OK)
@@ -204,6 +204,11 @@ namespace sqlite3_wrapper
             {
                 sqlite3_close_v2(_db);
             }
+        }
+
+        sqlite3 *native_handle()
+        {
+            return _db;
         }
 
         void begin(transaction_type type = transaction_type::DEFERRED)
