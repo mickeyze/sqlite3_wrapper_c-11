@@ -280,7 +280,7 @@ namespace sqlite3_wrapper
 
         static void column(sqlite3_stmt *statement, int column, T &arg)
         {
-            arg = sqlite3_column_int(statement, column);
+            arg = static_cast<T>(sqlite3_column_int(statement, column));
         }
     };
 
@@ -295,6 +295,24 @@ namespace sqlite3_wrapper
         static void column(sqlite3_stmt *statement, int column, T &arg)
         {
             arg = sqlite3_column_int64(statement, column);
+        }
+    };
+
+    template<class T>
+    struct type_traits<T, std::enable_if_t<std::is_enum_v<T>>>
+    {
+        using type = std::underlying_type_t<T>;
+
+        static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy)
+        {
+            return type_traits<type>::bind(statement, index, static_cast<type>(arg), bind_policy);
+        }
+
+        static void column(sqlite3_stmt *statement, int column, T &arg)
+        {
+            type tmp;
+            type_traits<type>::column(statement, column, tmp);
+            arg = static_cast<T>(tmp);
         }
     };
 
