@@ -30,7 +30,7 @@ namespace sqlite3_wrapper
         TRANSIENT
     };
 
-    template<class T>
+    template<class T, class Enable = void>
     struct type_traits
     {
         static int bind(sqlite3_stmt *statement, int index, const T &arg, bind_policy policy)
@@ -257,28 +257,42 @@ namespace sqlite3_wrapper
     };
 
     template<>
-    struct type_traits<int32_t>
+    struct type_traits<bool>
     {
-        static int bind(sqlite3_stmt *statement, int index, int32_t arg, bind_policy)
+        static int bind(sqlite3_stmt *statement, int index, bool arg, bind_policy)
+        {
+            return sqlite3_bind_int(statement, index, arg ? 1 : 0);
+        }
+
+        static void column(sqlite3_stmt *statement, int column, bool &arg)
+        {
+            arg = sqlite3_column_int(statement, column) != 0;
+        }
+    };
+
+    template<class T>
+    struct type_traits<T, std::enable_if_t<std::is_integral_v<T> && sizeof(T) <= 32>>
+    {
+        static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy)
         {
             return sqlite3_bind_int(statement, index, arg);
         }
 
-        static void column(sqlite3_stmt *statement, int column, int32_t &arg)
+        static void column(sqlite3_stmt *statement, int column, T &arg)
         {
             arg = sqlite3_column_int(statement, column);
         }
     };
 
-    template<>
-    struct type_traits<int64_t>
+    template<class T>
+    struct type_traits<T, std::enable_if_t<std::is_integral_v<T> && sizeof(T) == 64>>
     {
-        static int bind(sqlite3_stmt *statement, int index, int64_t arg, bind_policy)
+        static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy)
         {
             return sqlite3_bind_int64(statement, index, arg);
         }
 
-        static void column(sqlite3_stmt *statement, int column, int64_t &arg)
+        static void column(sqlite3_stmt *statement, int column, T &arg)
         {
             arg = sqlite3_column_int64(statement, column);
         }
