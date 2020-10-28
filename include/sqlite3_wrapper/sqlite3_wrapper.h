@@ -271,11 +271,11 @@ namespace sqlite3_wrapper
     };
 
     template<class T>
-    struct type_traits<T, std::enable_if_t<std::is_integral_v<T> && sizeof(T) <= 32>>
+    struct type_traits<T, std::enable_if_t<std::is_integral_v<T> && sizeof(T) <= 4>>
     {
         static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy)
         {
-            return sqlite3_bind_int(statement, index, arg);
+            return sqlite3_bind_int(statement, index, static_cast<int>(arg));
         }
 
         static void column(sqlite3_stmt *statement, int column, T &arg)
@@ -285,16 +285,16 @@ namespace sqlite3_wrapper
     };
 
     template<class T>
-    struct type_traits<T, std::enable_if_t<std::is_integral_v<T> && sizeof(T) == 64>>
+    struct type_traits<T, std::enable_if_t<std::is_integral_v<T> && sizeof(T) == 8>>
     {
         static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy)
         {
-            return sqlite3_bind_int64(statement, index, arg);
+            return sqlite3_bind_int64(statement, index, static_cast<int64_t>(arg));
         }
 
         static void column(sqlite3_stmt *statement, int column, T &arg)
         {
-            arg = sqlite3_column_int64(statement, column);
+            arg = static_cast<T>(sqlite3_column_int64(statement, column));
         }
     };
 
@@ -303,7 +303,7 @@ namespace sqlite3_wrapper
     {
         using type = std::underlying_type_t<T>;
 
-        static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy)
+        static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy bind_policy)
         {
             return type_traits<type>::bind(statement, index, static_cast<type>(arg), bind_policy);
         }
