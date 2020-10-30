@@ -8,7 +8,7 @@ This is very simple but useful wrapper around `sqlite3_*` C functions with using
 * Minimum entities(db, statement, exception, type_traits)
 * Supports transactions
 * Supports `std::string_view`, `std::optional`, `std::nullopt`, `nullptr`
-* Extendable for any new user types via template specialization of `type_traits'
+* Extendable for any new user types via template specialization of `type_traits`
 
 # Example
 ```cpp
