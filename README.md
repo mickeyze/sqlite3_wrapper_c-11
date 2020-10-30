@@ -4,7 +4,7 @@ This is very simple but useful wrapper around `sqlite3_*` C functions with using
 
 # Features
 * Header only library
-* Very idiomatic and follows original sqlite terms
+* Very simple, idiomatic and follows original sqlite terms
 * Minimum entities(db, statement, exception, type_traits)
 * Supports transactions
 * Supports `std::string_view`, `std::optional`, `std::nullopt`, `nullptr`
