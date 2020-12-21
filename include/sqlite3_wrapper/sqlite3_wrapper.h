@@ -13,6 +13,11 @@ namespace sqlite3_wrapper
     class exception: public std::runtime_error
     {
     public:
+        exception(std::string_view sql, sqlite3 *db)
+            : std::runtime_error("'" + std::string(sql) + "' failed: " + sqlite3_errmsg(db))
+        {
+        }
+
         exception(sqlite3 *db)
             : std::runtime_error(sqlite3_errmsg(db))
         {
@@ -52,7 +57,7 @@ namespace sqlite3_wrapper
             auto res = sqlite3_prepare_v3(db, sql.data(), static_cast<int>(sql.size()), prepare_flags, &_statement, nullptr);
             if (res != SQLITE_OK)
             {
-                throw exception(db);
+                throw exception(sql, db);
             }
         }
         statement(statement &&another)
