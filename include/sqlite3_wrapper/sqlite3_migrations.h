@@ -7,8 +7,8 @@ namespace sqlite3_wrapper
     class migrations
     {
     public:
-        template<size_t migrations_count>
-        static void apply_migrations(db &db, const std::array<const char *, migrations_count> &migrations)
+        template<class T, size_t MigrationsCount>
+        static void apply_migrations(db &db, const std::array<T, MigrationsCount> &migrations)
         {
             create_version_info_table(db);
             auto last_version = get_last_applied_version(db);
