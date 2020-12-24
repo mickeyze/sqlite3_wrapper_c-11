@@ -38,15 +38,8 @@ namespace sqlite3_wrapper
     template<class T, class Enable = void>
     struct type_traits
     {
-        static int bind(sqlite3_stmt *statement, int index, const T &arg, bind_policy policy)
-        {
-            static_assert(false, "Not implemented");
-        }
-
-        static void column(sqlite3_stmt *statement, int column, T &arg)
-        {
-            static_assert(false, "Not implemented");
-        }
+        static int bind(sqlite3_stmt *statement, int index, const T &arg, bind_policy policy);
+        static void column(sqlite3_stmt *statement, int column, T &arg);
     };
 
     class statement
@@ -357,7 +350,7 @@ namespace sqlite3_wrapper
             auto data = sqlite3_column_text(statement, column);
             if (data)
             {
-                strncpy_s(arg, reinterpret_cast<const char *>(data), _TRUNCATE);
+                strncpy_s(arg, reinterpret_cast<const char *>(data), Size - 1);
             }
         }
     };
