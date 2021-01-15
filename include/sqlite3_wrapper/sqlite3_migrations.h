@@ -17,7 +17,22 @@ namespace sqlite3_wrapper
                 db.begin();
                 for (auto it = migrations.begin() + last_version; it != migrations.end(); ++it)
                 {
-                    db.execute(*it);
+                    std::string_view migration(*it);
+                    size_t start = 0;
+                    size_t end = migration.find(';');
+
+                    while (end != std::string_view::npos)
+                    {
+                        db.execute(migration.substr(start, end - start));
+                        start = end + 1;
+                        end = migration.find(';', start);
+                    }
+
+                    if (start < migration.size())
+                    {
+                        db.execute(migration.substr(start));
+                    }
+
                     db.execute(R"(
                         INSERT INTO VersionInfo(Version, AppliedOn)
                         VALUES (?, datetime('now'))
