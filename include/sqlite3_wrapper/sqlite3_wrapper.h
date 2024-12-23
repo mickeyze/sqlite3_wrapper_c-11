@@ -3,18 +3,16 @@
 #include <sqlite3.h>
 
 #include <stdexcept>
-#include <optional>
 #include <string>
-#include <string_view>
-#include <utility>
+#include <boost/optional.hpp>  // Use Boost.Optional for C++11 compatibility
 
 namespace sqlite3_wrapper
 {
-    class exception: public std::runtime_error
+    class exception : public std::runtime_error
     {
     public:
-        exception(std::string_view sql, sqlite3 *db)
-            : std::runtime_error("'" + std::string(sql) + "' failed: " + sqlite3_errmsg(db))
+        exception(const std::string& sql, sqlite3 *db)
+            : std::runtime_error("'" + sql + "' failed: " + sqlite3_errmsg(db))
         {
         }
 
@@ -45,19 +43,21 @@ namespace sqlite3_wrapper
     class statement
     {
     public:
-        statement(sqlite3 *db, std::string_view sql, unsigned int prepare_flags = 0)
+        statement(sqlite3 *db, const std::string& sql, unsigned int prepare_flags = 0)
         {
-            auto res = sqlite3_prepare_v3(db, sql.data(), static_cast<int>(sql.size()), prepare_flags, &_statement, nullptr);
+            auto res = sqlite3_prepare_v3(db, sql.c_str(), static_cast<int>(sql.size()), prepare_flags, &_statement, nullptr);
             if (res != SQLITE_OK)
             {
                 throw exception(sql, db);
             }
         }
+
         statement(statement &&another)
         {
             std::swap(_statement, another._statement);
             std::swap(_can_fetch, another._can_fetch);
         }
+
         statement(const statement &) = delete;
 
         statement &operator=(statement &&another)
@@ -66,6 +66,7 @@ namespace sqlite3_wrapper
             std::swap(_can_fetch, another._can_fetch);
             return *this;
         }
+
         statement &operator=(const statement &) = delete;
 
         ~statement()
@@ -174,19 +175,21 @@ namespace sqlite3_wrapper
     class db
     {
     public:
-        db(std::string_view filename, int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
+        db(const std::string& filename, int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
         {
-            auto res = sqlite3_open_v2(filename.data(), &_db, flags, nullptr);
+            auto res = sqlite3_open_v2(filename.c_str(), &_db, flags, nullptr);
             if (res != SQLITE_OK)
             {
                 sqlite3_close_v2(_db);
                 throw exception(_db);
             }
         }
+
         db(db &&another)
         {
             std::swap(_db, another._db);
         }
+
         db(const db &) = delete;
 
         db &operator=(db &&another)
@@ -194,6 +197,7 @@ namespace sqlite3_wrapper
             std::swap(_db, another._db);
             return *this;
         }
+
         db &operator=(const db &) = delete;
 
         ~db()
@@ -236,13 +240,13 @@ namespace sqlite3_wrapper
             execute("ROLLBACK TRANSACTION");
         }
 
-        [[nodiscard]] statement prepare(std::string_view sql, unsigned int prepare_flags = SQLITE_PREPARE_PERSISTENT)
+        statement prepare(const std::string& sql, unsigned int prepare_flags = SQLITE_PREPARE_PERSISTENT)
         {
             return statement(_db, sql, prepare_flags);
         }
 
         template<class... Args>
-        statement execute(std::string_view sql, const Args &... args)
+        statement execute(const std::string& sql, const Args &... args)
         {
             statement s(_db, sql);
             s.execute(args...);
@@ -269,7 +273,7 @@ namespace sqlite3_wrapper
     };
 
     template<class T>
-    struct type_traits<T, std::enable_if_t<std::is_integral_v<T> && sizeof(T) <= 4>>
+    struct type_traits<T, typename std::enable_if<std::is_integral<T>::value && sizeof(T) <= 4>::type>
     {
         static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy)
         {
@@ -283,7 +287,7 @@ namespace sqlite3_wrapper
     };
 
     template<class T>
-    struct type_traits<T, std::enable_if_t<std::is_integral_v<T> && sizeof(T) == 8>>
+    struct type_traits<T, typename std::enable_if<std::is_integral<T>::value && sizeof(T) == 8>::type>
     {
         static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy)
         {
@@ -297,9 +301,9 @@ namespace sqlite3_wrapper
     };
 
     template<class T>
-    struct type_traits<T, std::enable_if_t<std::is_enum_v<T>>>
+    struct type_traits<T, typename std::enable_if<std::is_enum<T>::value>::type>
     {
-        using type = std::underlying_type_t<T>;
+        using type = typename std::underlying_type<T>::type;
 
         static int bind(sqlite3_stmt *statement, int index, T arg, bind_policy bind_policy)
         {
@@ -350,7 +354,7 @@ namespace sqlite3_wrapper
             auto data = sqlite3_column_text(statement, column);
             if (data)
             {
-                strncpy_s(arg, reinterpret_cast<const char *>(data), Size - 1);
+                strncpy(arg, reinterpret_cast<const char *>(data), Size - 1);
             }
         }
     };
@@ -360,7 +364,7 @@ namespace sqlite3_wrapper
     {
         static int bind(sqlite3_stmt *statement, int index, const std::string &arg, bind_policy policy)
         {
-            return sqlite3_bind_text(statement, index, arg.data(), static_cast<int>(arg.size()), policy == bind_policy::STATIC ? SQLITE_STATIC : SQLITE_TRANSIENT);
+            return sqlite3_bind_text(statement, index, arg.c_str(), static_cast<int>(arg.size()), policy == bind_policy::STATIC ? SQLITE_STATIC : SQLITE_TRANSIENT);
         }
 
         static void column(sqlite3_stmt *statement, int column, std::string &arg)
@@ -381,9 +385,9 @@ namespace sqlite3_wrapper
     };
 
     template<class T>
-    struct type_traits<std::optional<T>>
+    struct type_traits<boost::optional<T>> // Use Boost.Optional
     {
-        static int bind(sqlite3_stmt *statement, int index, const std::optional<T> &arg, bind_policy policy)
+        static int bind(sqlite3_stmt *statement, int index, const boost::optional<T> &arg, bind_policy policy)
         {
             if (arg)
             {
@@ -395,15 +399,15 @@ namespace sqlite3_wrapper
             }
         }
 
-        static void column(sqlite3_stmt *statement, int column, std::optional<T> &arg)
+        static void column(sqlite3_stmt *statement, int column, boost::optional<T> &arg)
         {
-            if (sqlite3_column_type(statement, column) != SQLITE_NULL)
+            if (sqlite3_column_type(statement, column) == SQLITE_NULL)
             {
-                type_traits<T>::column(statement, column, arg.emplace());
+                arg = boost::none;
             }
             else
             {
-                arg = std::nullopt;
+                type_traits<T>::column(statement, column, *arg);
             }
         }
     };
