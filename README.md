@@ -1,4 +1,4 @@
-# SQLite3 Wrapper
+# SQLite3 Wrapper (c++ 11)
 
 This is very simple but useful wrapper around `sqlite3_*` C functions with using latest C++ standard.
 
